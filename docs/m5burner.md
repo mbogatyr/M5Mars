@@ -6,7 +6,7 @@ burner.m5stack.com/developer/firmware/upload.
 | Field | Value |
 |---|---|
 | Name | MARS |
-| Category | Game (or Demo, if the form offers it) |
+| Category | Games |
 | Devices | StickS3 |
 | Version | v1.0.0 |
 | Project link | https://github.com/mbogatyr/M5Mars |
@@ -15,7 +15,11 @@ burner.m5stack.com/developer/firmware/upload.
 | Visibility | Public (needs moderation) |
 
 `dist/` is not in git; rebuild it as described in CLAUDE.md, "Publishing to
-M5Burner".
+M5Burner". The cover is also kept as `docs/screenshot.png`.
+
+v1.0.0 was uploaded on 2026-09-29 with exactly these values (visibility
+Public, so it waits for M5Stack's review; status "Pending" right after the
+upload).
 
 ## Description
 

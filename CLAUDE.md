@@ -220,7 +220,12 @@ cp .pio/build/sticks3/firmware-merged.bin dist/MARS-v<version>.bin
 
 v1.0.0 (2026-09-29): the image was flashed with `esptool.py write_flash 0x0`,
 the way M5Burner does it, and the board booted and flew at 35 fps. The cover
-is also kept as `docs/screenshot.png`.
+(the user picked it out of five board screenshots) is also kept as
+`docs/screenshot.png`. Uploaded the same day through the user's Chrome,
+where they are logged in (Claude in Chrome can attach files; the built-in
+browser pane cannot): category Games, StickS3, Public, "Pending" review.
+The form shows a cover editor (crop, offset, optional caption); the cover
+went in as it is, with no caption.
 
 Only the StickS3 is supported for now. The same ESP32-S3 image could also
 run on the Cardputer and Cardputer ADV, since M5GFX detects them and drives
