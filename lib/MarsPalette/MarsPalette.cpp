@@ -4,10 +4,13 @@ namespace MarsPalette {
 
 namespace {
 
-// Cloud texture densities below this are clear sky.
-constexpr int kCloudFrom = 7;
-// How opaque the thickest cloud is overhead, in 1/256.
-constexpr int kCloudOpacity = 220;
+// Cloud texture densities up to this are clear sky; above it the pink
+// builds up smoothly, so the clouds are soft streaks rather than blobs.
+constexpr int kCloudFrom = 4;
+// How opaque the thickest cloud is, in 1/256. Unlike a haze it does not
+// thin out with distance: in the original the streaks run right down to the
+// horizon.
+constexpr int kCloudOpacity = 230;
 
 uint8_t widen6(int v) {
     if (v > 63) {
@@ -22,9 +25,11 @@ Rgb terrain(uint8_t index) {
     return {widen6(index / 4 + 16), widen6(index / 8), widen6(index / 16)};
 }
 
-Rgb haze() { return {200, 128, 96}; }
-Rgb zenith() { return {88, 36, 28}; }
-Rgb cloud() { return {232, 176, 140}; }
+Rgb farGround() { return {48, 4, 0}; }
+Rgb skyTop() { return {214, 62, 48}; }
+Rgb skyHorizon() { return {222, 118, 104}; }
+Rgb cloud() { return {228, 160, 150}; }
+Rgb horizonGlow() { return {242, 132, 104}; }
 
 Rgb mix(Rgb a, Rgb b, int t, int tMax) {
     auto channel = [t, tMax](int from, int to) {
@@ -44,22 +49,19 @@ void buildFogLut(uint16_t lut[kFogLevels][256]) {
     for (int level = 0; level < kFogLevels; ++level) {
         for (int i = 0; i < 256; ++i) {
             lut[level][i] =
-                toRgb565(mix(terrain(static_cast<uint8_t>(i)), haze(), level, kFogLevels - 1));
+                toRgb565(mix(terrain(static_cast<uint8_t>(i)), farGround(), level, kFogLevels - 1));
         }
     }
 }
 
 void buildSkyLut(uint16_t lut[kSkyLevels][kCloudLevels]) {
     const int far = kSkyLevels - 1;
+    const int coverMax = kCloudLevels - 1 - kCloudFrom;
     for (int level = 0; level < kSkyLevels; ++level) {
-        const Rgb sky = mix(zenith(), haze(), level, far);
+        const Rgb sky = mix(skyTop(), skyHorizon(), level, far);
         for (int density = 0; density < kCloudLevels; ++density) {
             const int cover = density > kCloudFrom ? density - kCloudFrom : 0;
-            const int coverMax = kCloudLevels - 1 - kCloudFrom;
-            // Clouds thin out with distance and vanish into the haze at the
-            // horizon, so the sky meets the far terrain without a seam.
-            const int alpha = kCloudOpacity * cover * (far - level) / (coverMax * far);
-            lut[level][density] = toRgb565(mix(sky, cloud(), alpha, 256));
+            lut[level][density] = toRgb565(mix(sky, cloud(), kCloudOpacity * cover / coverMax, 256));
         }
     }
 }

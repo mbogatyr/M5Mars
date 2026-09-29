@@ -64,16 +64,26 @@ void test_no_fog_leaves_the_colour_as_it_is(void) {
     }
 }
 
-void test_full_fog_is_pure_haze(void) {
+static int brightness(uint16_t c) { return (c >> 11) * 2 + ((c >> 5) & 0x3F) + (c & 0x1F) * 2; }
+
+void test_at_the_view_distance_all_ground_is_the_far_colour(void) {
     buildFogLut(fog);
     for (int i = 0; i < 256; ++i) {
-        TEST_ASSERT_EQUAL_HEX16(toRgb565(haze()), fog[kFogLevels - 1][i]);
+        TEST_ASSERT_EQUAL_HEX16(toRgb565(farGround()), fog[kFogLevels - 1][i]);
     }
 }
 
-void test_each_fog_level_is_closer_to_the_haze(void) {
+// As in the original, distance darkens the ground instead of paling it.
+void test_far_ground_is_darker_than_any_near_ground(void) {
     buildFogLut(fog);
-    const uint16_t h = toRgb565(haze());
+    for (int i = 0; i < 256; ++i) {
+        TEST_ASSERT_LESS_THAN(brightness(fog[0][i]), brightness(fog[kFogLevels - 1][i]));
+    }
+}
+
+void test_each_fog_level_is_closer_to_the_far_colour(void) {
+    buildFogLut(fog);
+    const uint16_t h = toRgb565(farGround());
     for (int i : {0, 64, 128, 255}) {
         for (int level = 1; level < kFogLevels; ++level) {
             TEST_ASSERT_LESS_OR_EQUAL(distance565(fog[level - 1][i], h), distance565(fog[level][i], h));
@@ -81,19 +91,23 @@ void test_each_fog_level_is_closer_to_the_haze(void) {
     }
 }
 
-// At the horizon the sky is the haze the far terrain fades into.
-void test_sky_at_the_horizon_is_pure_haze_even_under_clouds(void) {
+void test_sky_grows_lighter_towards_the_horizon(void) {
     buildSkyLut(sky);
-    for (int d = 0; d < kCloudLevels; ++d) {
-        TEST_ASSERT_EQUAL_HEX16(toRgb565(haze()), sky[kSkyLevels - 1][d]);
-    }
+    TEST_ASSERT_EQUAL_HEX16(toRgb565(skyTop()), sky[0][0]);
+    TEST_ASSERT_EQUAL_HEX16(toRgb565(skyHorizon()), sky[kSkyLevels - 1][0]);
+    TEST_ASSERT_GREATER_THAN(brightness(sky[0][0]) + 20, brightness(sky[kSkyLevels - 1][0]));
 }
 
 void test_thin_cloud_leaves_the_sky_clear_and_thick_cloud_shows(void) {
     buildSkyLut(sky);
-    TEST_ASSERT_EQUAL_HEX16(toRgb565(zenith()), sky[0][0]);
-    TEST_ASSERT_EQUAL_HEX16(sky[0][0], sky[0][5]);
+    TEST_ASSERT_EQUAL_HEX16(sky[0][0], sky[0][3]);
     TEST_ASSERT_GREATER_THAN(20, distance565(sky[0][0], sky[0][kCloudLevels - 1]));
+}
+
+// The cloud streaks run right down to the horizon, with no haze over them.
+void test_clouds_reach_down_to_the_horizon(void) {
+    buildSkyLut(sky);
+    TEST_ASSERT_GREATER_THAN(10, distance565(sky[kSkyLevels - 1][0], sky[kSkyLevels - 1][kCloudLevels - 1]));
 }
 
 int main(int, char **) {
@@ -104,10 +118,12 @@ int main(int, char **) {
     RUN_TEST(test_mix_goes_from_one_colour_to_the_other);
     RUN_TEST(test_rgb565_packing);
     RUN_TEST(test_no_fog_leaves_the_colour_as_it_is);
-    RUN_TEST(test_full_fog_is_pure_haze);
-    RUN_TEST(test_each_fog_level_is_closer_to_the_haze);
-    RUN_TEST(test_sky_at_the_horizon_is_pure_haze_even_under_clouds);
+    RUN_TEST(test_at_the_view_distance_all_ground_is_the_far_colour);
+    RUN_TEST(test_far_ground_is_darker_than_any_near_ground);
+    RUN_TEST(test_each_fog_level_is_closer_to_the_far_colour);
+    RUN_TEST(test_sky_grows_lighter_towards_the_horizon);
     RUN_TEST(test_thin_cloud_leaves_the_sky_clear_and_thick_cloud_shows);
+    RUN_TEST(test_clouds_reach_down_to_the_horizon);
 
     return UNITY_END();
 }

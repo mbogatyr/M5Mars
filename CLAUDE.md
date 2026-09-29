@@ -6,9 +6,22 @@ MARS for the M5StickS3: a real-time voxel flight over a fractal red planet,
 after Tim Clarke's MARS.EXE (1993, 5.6 KB, VGA 320x200x256). The planet is a
 256x256 Diamond-Square height map on a torus, shaded by slope, coloured with
 the palette of the original; the view is drawn front to back column by column
-with a y-buffer (the Comanche technique), fades into haze with distance and
-has a ceiling of fractal clouds. `mars.c` in the root is the reference sketch
-the user supplied (DOS, Turbo C); it is not built and stays as it is.
+with a y-buffer (the Comanche technique), sinks into dark maroon with
+distance and has a ceiling of fractal clouds down to a glowing horizon.
+`mars.c` in the root is the reference sketch the user supplied (DOS, Turbo
+C); it is not built and stays as it is.
+
+The look of the original is taken from a 320x200 capture of MARS.EXE:
+https://www.youtube.com/watch?v=ZCUpqprm3g4 (70 s). Measured there on
+2026-09-29, and what the code now follows: the camera flies level with the
+horizon across the middle of the screen; the clear sky is a saturated
+salmon-red (~216, 66, 50) with soft pink clouds (~225, 155, 145) that thin
+into streaks and run right down to the horizon, the sky growing lighter
+towards it; the horizon is a bright line (~240, 130, 104); the far ground is
+dark maroon (~50, 4, 0), not a light haze; near ground is orange-brown with
+lit slopes (~125, 18, 0 up to ~185, 70, 35). An earlier version with a dark
+brown sky and a light salmon haze band was rejected by the user as unlike
+the original.
 
 The autopilot flies by itself; tilting the stick steers (see Controls).
 
@@ -67,7 +80,8 @@ The split into `lib/` and `src/` is not cosmetic here, it is load-bearing:
     planet (heights, a colour index per cell with slope shading and grain,
     packed as `color << 8 | height`) and a 128x128 cloud texture.
   - `MarsPalette`: the mars.c ramp (`r=i/4+16, g=i/8, b=i/16` at 6 bits),
-    haze, sky, clouds; lookup tables for 16 fog levels and the sky.
+    the far-ground, sky, cloud and horizon colours; lookup tables for 16
+    distance levels and the sky.
   - `Camera`: position, heading, altitude, pitch, bank. Forward is
     `(cos, sin)`, right is `(sin, -cos)`: turning right makes the heading
     smaller.
@@ -149,8 +163,9 @@ reads the port those lines are skipped, so they cannot stall the loop.
 `Serial.begin(115200)` must be called in `setup()`: M5Unified's
 `serial_baudrate` defaults to 0, and without it the port stays silent.
 
-Measured on 2026-09-29: 35–37 fps; drawing a frame takes 13 ms, pushing it
-over SPI another 13 ms; 130 KB of internal RAM stay free.
+Measured on 2026-09-29 with a view distance of 480 cells: 34–36 fps;
+drawing a frame takes 14 ms, pushing it over SPI another 13 ms; 130 KB of
+internal RAM stay free.
 
 ## Board specifics
 
@@ -244,7 +259,10 @@ checked for this effect.
 Unit tests cover the logic in `lib/`, with one directory
 `test/test_<module>/test_main.cpp` per module. `VoxelRenderer` is tested on
 small frames over hand-made ground (`Terrain::flatten()` and `set()`): sky and
-ground either side of the horizon, occlusion, haze, pitch, bank, heading.
+ground either side of the horizon, occlusion, distance darkening, the
+horizon glow, pitch, bank, heading. The view reaches past the 256-cell map,
+so far copies of a feature can appear in a test frame: check the near,
+unfogged colour when that matters.
 `src/Renderer` is checked by eye on the board and with the preview: do not
 try to write tests for it; that would require mocking all of LovyanGFX and
 would prove nothing useful.

@@ -89,18 +89,26 @@ void test_clear_sky_is_the_same_across_a_row(void) {
     }
 }
 
-void test_far_ground_is_hazier_than_near_ground(void) {
+void test_far_ground_sinks_further_into_the_distance_colour(void) {
     renderer.render(terrain, level(20), frame, kW, kH);
     const int nearLevel = fogLevelOf(pixel(kW / 2, kH - 1), kGround);
-    const int farLevel = fogLevelOf(pixel(kW / 2, kHorizon + 1), kGround);
+    const int farLevel = fogLevelOf(pixel(kW / 2, kHorizon + 2), kGround);
     TEST_ASSERT_EQUAL(0, nearLevel);
-    TEST_ASSERT_GREATER_THAN(8, farLevel);
+    TEST_ASSERT_GREATER_THAN(3, farLevel);
 }
 
-// Beyond the view distance, right under the horizon, only haze is left.
-void test_the_horizon_line_is_haze(void) {
+void test_the_horizon_line_glows(void) {
     renderer.render(terrain, level(20), frame, kW, kH);
-    TEST_ASSERT_EQUAL_HEX16(renderer.hazeColor(), pixel(kW / 2, kHorizon));
+    for (int x = 0; x < kW; ++x) {
+        TEST_ASSERT_EQUAL_HEX16(renderer.glowColor(), pixel(x, kHorizon));
+    }
+}
+
+// Seen from high up, the ground ends below the horizon; the rows in between
+// are the dark far colour, as if the ground went on.
+void test_beyond_the_view_distance_lies_dark_ground(void) {
+    renderer.render(terrain, level(100), frame, kW, kH); // the far edge is on row 20
+    TEST_ASSERT_EQUAL_HEX16(renderer.farColor(), pixel(kW / 2, kHorizon + 3));
 }
 
 // The near wall is lower than the eye, the far one higher: the far wall
@@ -146,10 +154,12 @@ static void pillar(int x, int y) {
     }
 }
 
+// Only the near pillar, with no fog on it: the map wraps around, so far
+// copies of it can show up elsewhere in the view.
 static bool pillarInColumns(int from, int to) {
     for (int x = from; x < to; ++x) {
         for (int y = 0; y < kH; ++y) {
-            if (isColor(pixel(x, y), kPillar)) {
+            if (pixel(x, y) == renderer.fogColor(0, kPillar)) {
                 return true;
             }
         }
@@ -205,8 +215,9 @@ int main(int, char **) {
 
     RUN_TEST(test_flat_ground_is_below_the_horizon_and_sky_above);
     RUN_TEST(test_clear_sky_is_the_same_across_a_row);
-    RUN_TEST(test_far_ground_is_hazier_than_near_ground);
-    RUN_TEST(test_the_horizon_line_is_haze);
+    RUN_TEST(test_far_ground_sinks_further_into_the_distance_colour);
+    RUN_TEST(test_the_horizon_line_glows);
+    RUN_TEST(test_beyond_the_view_distance_lies_dark_ground);
     RUN_TEST(test_nearer_ground_hides_what_is_behind_it);
     RUN_TEST(test_pitching_up_lowers_the_horizon);
     RUN_TEST(test_banking_right_lifts_the_horizon_on_the_right);

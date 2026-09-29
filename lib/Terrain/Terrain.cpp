@@ -9,7 +9,7 @@ namespace {
 constexpr float kFirstAmplitude = 12000.0f;
 
 constexpr float kRoughness = 0.46f;      // terrain: large hills, little grit
-constexpr float kCloudRoughness = 0.62f; // clouds: more ragged edges
+constexpr float kCloudRoughness = 0.5f;  // clouds: soft, blurred once more
 
 // Heights are raised to this power after normalizing: low ground flattens
 // into plains and valleys, the peaks get steeper.
@@ -173,6 +173,7 @@ void Terrain::generate(uint32_t seed) {
     int16_t *scratch = reinterpret_cast<int16_t *>(cells_);
 
     diamondSquare(scratch, kCloudLog2, seed ^ 0xC10D5u, kCloudRoughness);
+    smoothTorus(scratch, kCloudLog2);
     normalize(scratch, kCloudSize * kCloudSize, clouds_, nullptr);
 
     uint8_t curve[256];

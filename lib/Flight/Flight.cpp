@@ -19,9 +19,10 @@ constexpr float kRiseEase = 2.5f; // climbing over a ridge cannot wait
 constexpr float kSinkEase = 0.8f; // coming down into a valley can
 constexpr float kAttitudeEase = 3.0f;
 
-// Seen from the cockpit: a slight look down at the ground, the nose rises
-// in a climb, the view banks into turns.
-constexpr float kBasePitch = -0.18f;
+// Seen from the cockpit: level, with the horizon across the middle of the
+// screen as in the original; the nose rises in a climb, the view banks into
+// turns.
+constexpr float kBasePitch = 0.0f;
 constexpr float kPitchPerClimb = 0.12f;
 constexpr float kPitchPerRise = 0.004f; // per world unit per second of vertical speed
 constexpr float kMaxPitch = 0.35f;

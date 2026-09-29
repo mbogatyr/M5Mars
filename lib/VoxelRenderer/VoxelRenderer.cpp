@@ -10,16 +10,16 @@ constexpr float kFocalPerWidth = 0.6f; // about 80 degrees across
 // matters, far away one cell is less than a pixel anyway.
 constexpr float kNear = 2.0f;
 constexpr float kFirstStep = 0.6f;
-constexpr float kStepGrowth = 0.012f;
+constexpr float kStepGrowth = 0.018f;
 
-// The haze begins here and swallows everything at kFar.
+// From here on the ground sinks into dark maroon, fully by kFar.
 constexpr float kFogStart = 30.0f;
 
 // The cloud ceiling: how high above the camera it is, how many texels one
-// map cell covers, and at what distance it is lost in the haze.
+// map cell covers, and at what distance the sky reaches its horizon colour.
 constexpr float kCloudAbove = 70.0f;
 constexpr float kCloudTexelsPerCell = 0.25f;
-constexpr float kSkyHazeDistance = 3200.0f;
+constexpr float kSkyHorizonDistance = 3200.0f;
 
 // Keeps texture coordinates positive before they are truncated to int.
 constexpr float kPositive = 65536.0f;
@@ -38,9 +38,15 @@ int fogLevel(float z) {
 } // namespace
 
 VoxelRenderer::VoxelRenderer(bool byteSwapped) {
-    MarsPalette::buildFogLut(fog_);
-    MarsPalette::buildSkyLut(sky_);
+    using namespace MarsPalette;
+    buildFogLut(fog_);
+    buildSkyLut(sky_);
+    glow_ = toRgb565(horizonGlow());
+    // Under the glow line: half way down to the far ground.
+    underGlow_ = toRgb565(mix(horizonGlow(), farGround(), 1, 2));
     if (byteSwapped) {
+        glow_ = swapBytes(glow_);
+        underGlow_ = swapBytes(underGlow_);
         for (auto &level : fog_) {
             for (auto &c : level) {
                 c = MarsPalette::swapBytes(c);
@@ -143,7 +149,7 @@ void VoxelRenderer::prepareSky(int width) {
         // d rows above the horizon the ceiling is this far ahead.
         const float distance = kCloudAbove * f / (d > 0 ? d : 0.5f);
         cloudDistance_[d] = distance;
-        const int level = static_cast<int>(distance * kLast / kSkyHazeDistance);
+        const int level = static_cast<int>(distance * kLast / kSkyHorizonDistance);
         skyLevel_[d] = static_cast<uint8_t>(level < kLast ? level : kLast);
     }
 }
@@ -160,7 +166,7 @@ void VoxelRenderer::renderSky(const Terrain &terrain, const Camera &camera, uint
     const float ry = camera.rightY();
     const float u0 = camera.x * kCloudTexelsPerCell + kPositive;
     const float v0 = camera.y * kCloudTexelsPerCell + kPositive;
-    const uint16_t haze = hazeColor();
+    const uint16_t far = farColor();
 
     for (int i = 0; i < width; ++i) {
         const int top = top_[i];
@@ -177,7 +183,9 @@ void VoxelRenderer::renderSky(const Terrain &terrain, const Camera &camera, uint
         for (int y = 0; y < top; ++y, p += width) {
             int d = horizon - y;
             if (d <= 0) {
-                *p = haze; // below the horizon, beyond the view distance
+                // The horizon line glows; under it, beyond the view
+                // distance, lies the far ground.
+                *p = d == 0 ? glow_ : d == -1 ? underGlow_ : far;
                 continue;
             }
             if (d >= kDistances) {

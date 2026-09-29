@@ -118,11 +118,13 @@ void test_the_autopilot_wanders_by_itself(void) {
 }
 
 void test_climbing_goes_up_to_the_climb_range(void) {
-    Flight flight;
-    flight.begin(0, flat);
-    fly(flight, flat, 0, 5000, {0, 1});
-    TEST_ASSERT_FLOAT_WITHIN(0.5f, Flight::kClearance + Flight::kClimbRange, flight.camera().altitude);
-    TEST_ASSERT_GREATER_THAN_FLOAT(-0.18f, flight.camera().pitch); // the nose is up from level cruise
+    Flight cruising, climbing;
+    cruising.begin(0, flat);
+    climbing.begin(0, flat);
+    fly(cruising, flat, 0, 5000);
+    fly(climbing, flat, 0, 5000, {0, 1});
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, Flight::kClearance + Flight::kClimbRange, climbing.camera().altitude);
+    TEST_ASSERT_GREATER_THAN_FLOAT(cruising.camera().pitch, climbing.camera().pitch); // nose up
 }
 
 void test_diving_goes_down_to_just_above_the_ground(void) {

@@ -13,8 +13,8 @@
 // found there is projected onto the screen and the column is filled up to it,
 // but only above what nearer slices have already painted. That keeps every
 // pixel painted once and hides what is behind the hills without a z-buffer.
-// Far slices fade into the haze. What is left above the ground is sky: a
-// ceiling of fractal clouds seen in perspective.
+// Far slices sink into dark maroon. What is left above the ground is sky: a
+// ceiling of fractal clouds seen in perspective, down to a glowing horizon.
 //
 // It writes into any RGB565 buffer and never touches hardware, so it runs in
 // the tests on the Mac as well.
@@ -23,7 +23,7 @@ class VoxelRenderer {
     static constexpr int kMaxWidth = 320;
     static constexpr int kMaxHeight = 240;
 
-    static constexpr float kFar = 320.0f; // view distance, in cells
+    static constexpr float kFar = 480.0f; // view distance, in cells; the map repeats past 256
 
     // byteSwapped: write RGB565 with the high byte first, the way
     // LovyanGFX sprites keep their pixels.
@@ -39,7 +39,8 @@ class VoxelRenderer {
 
     // The colours it paints with, for the tests.
     uint16_t fogColor(int level, uint8_t index) const { return fog_[level][index]; }
-    uint16_t hazeColor() const { return sky_[MarsPalette::kSkyLevels - 1][0]; }
+    uint16_t farColor() const { return fog_[MarsPalette::kFogLevels - 1][0]; }
+    uint16_t glowColor() const { return glow_; }
 
   private:
     static constexpr int kDistances = 512;
@@ -50,12 +51,15 @@ class VoxelRenderer {
 
     uint16_t fog_[MarsPalette::kFogLevels][256];
     uint16_t sky_[MarsPalette::kSkyLevels][MarsPalette::kCloudLevels];
+    uint16_t glow_;
+    uint16_t underGlow_;
 
     int16_t top_[kMaxWidth];   // per column: the highest row painted so far
     float horizon_[kMaxWidth]; // per column: the horizon row, tilted by the bank
 
     // By rows above the horizon: how far away the cloud ceiling is there,
-    // and how much haze covers it. They depend only on the focal length.
+    // and how close to the horizon colour the sky is. They depend only on
+    // the focal length.
     float cloudDistance_[kDistances];
     uint8_t skyLevel_[kDistances];
     int skyWidth_ = 0;
