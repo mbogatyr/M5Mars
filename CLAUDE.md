@@ -207,6 +207,32 @@ The upload form is at burner.m5stack.com/developer/firmware/upload. It asks for:
 - visibility: Public requires moderation;
 - a cover image: a screenshot of the screen works.
 
+For MARS the filled-in form (name, description and version description in
+Markdown) is `docs/m5burner.md`. The files go into `dist/` (ignored by git,
+as in the sibling projects; a file picker can't easily reach the hidden
+`.pio/`):
+
+```bash
+~/.platformio/penv/bin/pio run -e sticks3 -t merged
+cp .pio/build/sticks3/firmware-merged.bin dist/MARS-v<version>.bin
+~/.platformio/penv/bin/python tools/serial_cmd.py snap dist/MARS-cover.png  # 3x screenshot
+```
+
+v1.0.0 (2026-09-29): the image was flashed with `esptool.py write_flash 0x0`,
+the way M5Burner does it, and the board booted and flew at 35 fps. The cover
+is also kept as `docs/screenshot.png`.
+
+Only the StickS3 is supported for now. The same ESP32-S3 image could also
+run on the Cardputer and Cardputer ADV, since M5GFX detects them and drives
+their 240x135 ST7789 on the same 40 MHz bus, and the framework boots without
+PSRAM (`CONFIG_SPIRAM_IGNORE_NOTFOUND`). What they would need: keyboard
+steering (M5Unified reads only their G0 button; the original Cardputer has no
+IMU, the ADV has one on I2C G8/G9), and not touching G11, which is KEY1 on
+the StickS3 but a keyboard line on the Cardputer. The StickC Plus / Plus2 are
+classic ESP32 and need a separate build; the 144 KB static terrain probably
+does not fit their static DRAM as it is. Not started: there was no device to
+test on.
+
 ### The side button is handled by the PMIC, not the firmware
 
 | Action | Result |
