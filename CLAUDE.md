@@ -233,8 +233,11 @@ browser pane cannot): category Games, StickS3, Public, "Pending" review.
 The form shows a cover editor (crop, offset, optional caption); the cover
 went in as it is, with no caption.
 
-v1.1.0 (2026-09-29) adds the Cardputer ADV; the cover is now a Cardputer ADV
-screenshot the user picked. See `docs/m5burner.md` for the text.
+v1.1.0 (2026-09-29) adds the Cardputer ADV. It went up as a second listing,
+"MARS for Cardputer ADV", with a Cardputer ADV screenshot the user picked as
+the cover: an M5Burner listing takes a single device and is identified by its
+name, so the StickS3 "MARS" (still v1.0.0, pending review) could not take
+it. `docs/m5burner.md` has both listings' texts and what M5Burner does.
 
 ### Cardputer ADV
 

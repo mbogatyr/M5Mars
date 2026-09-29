@@ -60,7 +60,8 @@ lets the screen sleep.
 
 ## Installing
 
-**M5Burner.** Choose StickS3 or Cardputer ADV and look for *MARS*.
+**M5Burner.** Choose StickS3 and look for *MARS*, or Cardputer ADV and look
+for *MARS for Cardputer ADV*.
 
 **From source**, with [PlatformIO](https://platformio.org/):
 
