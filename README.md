@@ -127,3 +127,7 @@ environment in `platformio.ini` builds and tests it on the host.
   that the colours and the sky are matched to.
 - [M5Unified](https://github.com/m5stack/M5Unified) and
   [M5GFX](https://github.com/m5stack/M5GFX) by M5Stack.
+
+## License
+
+[MIT](LICENSE)
