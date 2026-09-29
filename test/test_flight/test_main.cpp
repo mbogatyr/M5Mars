@@ -173,6 +173,21 @@ void test_speed_levels_cycle(void) {
     TEST_ASSERT_EQUAL(1, flight.speedLevel());
 }
 
+void test_combined_controls_add_up_and_stay_in_range(void) {
+    Controls tilt;
+    tilt.turn = 0.3f;
+    tilt.climb = -0.8f;
+    Controls keys;
+    keys.turn = 1;
+    keys.climb = -1;
+    const Controls both = combine(tilt, keys);
+    TEST_ASSERT_EQUAL_FLOAT(1, both.turn);
+    TEST_ASSERT_EQUAL_FLOAT(-1, both.climb);
+    const Controls tiltOnly = combine(tilt, Controls{});
+    TEST_ASSERT_EQUAL_FLOAT(0.3f, tiltOnly.turn);
+    TEST_ASSERT_EQUAL_FLOAT(-0.8f, tiltOnly.climb);
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
 
@@ -190,6 +205,7 @@ int main(int, char **) {
     RUN_TEST(test_letting_go_returns_to_cruising_height);
     RUN_TEST(test_never_below_the_ground);
     RUN_TEST(test_speed_levels_cycle);
+    RUN_TEST(test_combined_controls_add_up_and_stay_in_range);
 
     return UNITY_END();
 }

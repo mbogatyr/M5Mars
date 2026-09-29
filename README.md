@@ -1,8 +1,10 @@
-# MARS for M5StickS3
+# MARS for M5StickS3 and Cardputer ADV
 
 A port of **MARS**, Tim Clarke's legendary 1993 demo, to the
-[M5StickS3](https://docs.m5stack.com/en/core/StickS3): a real-time voxel
-flight over a fractal red planet, steered by tilting the stick.
+[M5StickS3](https://docs.m5stack.com/en/core/StickS3) and the
+[Cardputer ADV](https://docs.m5stack.com/en/core/Cardputer-Adv): a real-time
+voxel flight over a fractal red planet, steered by tilting the device (and, on
+the Cardputer, with the arrow keys too).
 
 ![MARS on the M5StickS3](docs/screenshot.png)
 
@@ -13,8 +15,9 @@ VGA (320×200, 256 colours). Every run made a new planet. Its readme said:
 "This code may form the basis of a forthcoming game..." It is the same
 technique as in NovaLogic's Comanche.
 
-This port does the same on the stick's 240×135 screen at about 35 frames per
-second. The look (level horizon, salmon-red sky with pink clouds, a glowing
+This port does the same on the 240×135 screen of either device at 33–35
+frames per second. One firmware image runs on both: it recognises the board
+at start-up. The look (level horizon, salmon-red sky with pink clouds, a glowing
 horizon, far mountains sinking into dark maroon) is matched to a
 [capture of the original](https://www.youtube.com/watch?v=ZCUpqprm3g4).
 
@@ -22,15 +25,28 @@ horizon, far mountains sinking into dark maroon) is matched to a
 
 ## Controls
 
-Hold the stick in landscape, screen towards you, like a tiny gamepad.
+Hold the device in landscape, screen towards you. On both, lowering the left
+or right end turns (the view banks into the turn), and tipping the top edge
+away or towards you dives down to the ground or climbs.
+
+**StickS3**, held like a tiny gamepad:
 
 | Input | Action |
 |---|---|
-| Lower the left or right end | Turn; the view banks into the turn |
-| Tip the top edge away / towards you | Dive down to the ground / climb |
 | KEY1 (the blue button on the front) | New planet; the current grip becomes neutral |
 | KEY2 (the button on the edge) | Speed: slow, cruise, fast |
 | Power button | Single press: on; double press: off |
+
+**Cardputer ADV**:
+
+| Input | Action |
+|---|---|
+| Arrow keys `,` `/` or `A` `D` | Turn left / right |
+| Arrow keys `;` `.` or `W` `S` | Climb / dive |
+| Enter or the G0 button | New planet; the current grip becomes neutral |
+| Space | Speed: slow, cruise, fast |
+
+The keys and the tilt work together.
 
 The autopilot is always flying: the course wanders by itself and the height
 follows the ground ahead. Tilting bends the course and the height, and
@@ -39,12 +55,12 @@ letting go hands the flight back to the autopilot.
 The neutral grip is taken 0.7 s after power-on and after the screen wakes, so
 any comfortable angle works. The screen goes dark after 3 minutes without a
 key press or a tilt of more than 8°; a tilt or a key wakes it (that press or
-tilt does nothing else). A stick lying still on the table, at any angle, lets
-the screen sleep.
+tilt does nothing else). A device lying still on the table, at any angle,
+lets the screen sleep.
 
 ## Installing
 
-**M5Burner.** Choose StickS3 and look for *MARS*.
+**M5Burner.** Choose StickS3 or Cardputer ADV and look for *MARS*.
 
 **From source**, with [PlatformIO](https://platformio.org/):
 
@@ -56,7 +72,9 @@ pio run -e sticks3 -t merged  # single image for M5Burner (flash at 0x0)
 
 The first build downloads the ESP32-S3 toolchain and takes several minutes.
 PlatformIO has no board definition for the StickS3, so `platformio.ini` uses
-`esp32-s3-devkitc-1` with octal PSRAM (`qio_opi`) and 8 MB partitions.
+`esp32-s3-devkitc-1` with octal PSRAM (`qio_opi`) and 8 MB partitions. The
+same image boots on the Cardputer ADV, which has no PSRAM: MARS does not use
+it.
 
 If flashing fails with `Failed to connect to ESP32-S3: No serial data
 received`, hold the side button until the green LED blinks and flash again.
@@ -107,8 +125,9 @@ the board:
 | `lib/VoxelRenderer/` | Draws a frame into any RGB565 buffer |
 | `lib/Flight/` | Autopilot, terrain following, speeds, controls |
 | `lib/Tilt/` | Accelerometer readings to turn and climb; "the stick moved" |
+| `lib/CardputerKeys/` | The Cardputer ADV keyboard: its controller's key events to held keys |
 | `lib/DisplayTimeout/` | Idle detection for the screen timeout |
-| `src/` | Board-specific code: the sprite, buttons, IMU, serial commands |
+| `src/` | Board-specific code: the sprite, buttons and keyboard, IMU axes, serial commands |
 | `test/` | Unity unit tests for everything in `lib/` |
 | `tools/preview/` | Flies over a planet on the computer and saves a sheet of frames |
 | `tools/serial_cmd.py` | Screenshots, frame rate and key presses over USB, for testing on the board |

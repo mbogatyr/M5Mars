@@ -11,6 +11,10 @@ struct Controls {
     float climb = 0; // above 0 climbs, below 0 dives down to the ground
 };
 
+// Two inputs at once, the tilt and the arrow keys for instance; each part
+// of the sum stays within -1..1.
+Controls combine(const Controls &a, const Controls &b);
+
 // Flies the camera over the planet.
 //
 // The autopilot is always on: the course wanders by itself and the altitude

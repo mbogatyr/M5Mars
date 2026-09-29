@@ -2,7 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-MARS for the M5StickS3: a real-time voxel flight over a fractal red planet,
+MARS for the M5StickS3 and the Cardputer ADV (one image for both): a
+real-time voxel flight over a fractal red planet,
 after Tim Clarke's MARS.EXE (1993, 5.6 KB, VGA 320x200x256). The planet is a
 256x256 Diamond-Square height map on a torus, shaded by slope, coloured with
 the palette of the original; the view is drawn front to back column by column
@@ -23,7 +24,8 @@ lit slopes (~125, 18, 0 up to ~185, 70, 35). An earlier version with a dark
 brown sky and a light salmon haze band was rejected by the user as unlike
 the original.
 
-The autopilot flies by itself; tilting the stick steers (see Controls).
+The autopilot flies by itself; tilting the device steers, and on the
+Cardputer ADV the arrow keys too (see Controls).
 
 ## Language
 
@@ -88,10 +90,13 @@ The split into `lib/` and `src/` is not cosmetic here, it is load-bearing:
   - `VoxelRenderer`: draws a frame into any RGB565 buffer.
   - `Flight`: autopilot, terrain following, speed levels, controls.
   - `Tilt`: accelerometer readings to turn/climb, and "the stick moved".
+  - `CardputerKeys`: the Cardputer ADV keyboard, from its TCA8418's key
+    events to a grid of held keys in the printed 4x14 layout.
   - `DisplayTimeout`: turns the display off after 3 minutes without activity.
 - `src/` is everything that knows about the board: `Renderer` owns the sprite
-  and pushes it, `main.cpp` wires the logic to the hardware and takes serial
-  commands.
+  and pushes it, `Input` reads the buttons and, on the Cardputer ADV, polls
+  the keyboard, `main.cpp` wires the logic to the hardware (including the
+  per-board accelerometer axes, `readAccel()`) and takes serial commands.
 
 The `native` environment builds only `lib/` (PlatformIO's `test_build_src`
 defaults to `no`), so the logic is tested on the Mac without the board.
@@ -127,15 +132,16 @@ values (`Camera camera_{128, 128}`), although clang on the Mac accepts it.
 
 ## Controls
 
-The stick is held in landscape, screen towards the pilot.
+The device is held in landscape, screen towards the pilot.
 
-| Input | Action |
-|---|---|
-| Tilt left/right (lift one end) | turn; the view banks into the turn |
-| Tip the top edge | climb or dive (dive goes down to just above the ground) |
-| KEY1 | new planet, and the current grip becomes neutral |
-| KEY2 | speed: slow, cruise, fast |
-| Side button | the PMIC's own: power on, double press off (below) |
+| Input | StickS3 | Cardputer ADV | Action |
+|---|---|---|---|
+| Tilt left/right (lift one end) | yes | yes | turn; the view banks into the turn |
+| Tip the top edge | yes | yes | climb or dive (dive goes down to just above the ground) |
+| Keys | — | `,` `/` or `A` `D`; `;` `.` or `W` `S` | turn; climb / dive, added to the tilt |
+| New planet | KEY1 | Enter or G0 | the current grip also becomes neutral |
+| Speed | KEY2 | Space | slow, cruise, fast |
+| Power | side button, the PMIC's own (below) | the power switch | |
 
 Letting go of the tilt hands the flight back to the autopilot. The neutral
 grip is taken 0.7 s after start-up and after the display wakes. A tilt of
@@ -152,8 +158,8 @@ it (see "If the board is stuck in the bootloader" below):
 PY=~/.platformio/penv/bin/python
 $PY tools/serial_cmd.py snap screen.png        # screenshot, 3x
 $PY tools/serial_cmd.py send perf --wait 5     # fps, paint and push time, free RAM
-$PY tools/serial_cmd.py send acc --wait 5      # accelerometer and tilt at 10 Hz
-$PY tools/serial_cmd.py send st                # seed, speed, camera, free RAM
+$PY tools/serial_cmd.py send acc --wait 5      # accelerometer, tilt and keys at 10 Hz
+$PY tools/serial_cmd.py send st                # board, seed, speed, camera, free RAM
 $PY tools/serial_cmd.py send k1                # press KEY1 (k2: KEY2)
 ```
 
@@ -227,16 +233,42 @@ browser pane cannot): category Games, StickS3, Public, "Pending" review.
 The form shows a cover editor (crop, offset, optional caption); the cover
 went in as it is, with no caption.
 
-Only the StickS3 is supported for now. The same ESP32-S3 image could also
-run on the Cardputer and Cardputer ADV, since M5GFX detects them and drives
-their 240x135 ST7789 on the same 40 MHz bus, and the framework boots without
-PSRAM (`CONFIG_SPIRAM_IGNORE_NOTFOUND`). What they would need: keyboard
-steering (M5Unified reads only their G0 button; the original Cardputer has no
-IMU, the ADV has one on I2C G8/G9), and not touching G11, which is KEY1 on
-the StickS3 but a keyboard line on the Cardputer. The StickC Plus / Plus2 are
-classic ESP32 and need a separate build; the 144 KB static terrain probably
-does not fit their static DRAM as it is. Not started: there was no device to
-test on.
+v1.1.0 (2026-09-29) adds the Cardputer ADV; the cover is now a Cardputer ADV
+screenshot the user picked. See `docs/m5burner.md` for the text.
+
+### Cardputer ADV
+
+The same image runs on it; `st` reports `board=24 keyboard=1` there and
+`board=26 keyboard=0` on the StickS3. Checked on a Cardputer ADV on
+2026-09-29 (ESP32-S3 with 8 MB embedded flash and no PSRAM, MAC
+80:45:6b:77:57:3c): the picture is upright, tilt and keys work, 33 fps
+(drawing 15 ms, pushing 13 ms).
+
+- M5GFX detects it and drives its 240x135 ST7789 on the same 40 MHz bus, in
+  landscape; `setRotation(1)` is right for both boards. The framework boots
+  without PSRAM (`CONFIG_SPIRAM_IGNORE_NOTFOUND`); MARS does not use it.
+- Its IMU sits turned by 90 degrees against the StickS3's: tipping the
+  Cardputer towards you moves its Y, lowering one end its X. `readAccel()`
+  feeds Tilt `x = ay, y = -ax` there. The first build without it swapped
+  turning and climbing; the user caught it.
+- M5Unified reads only its G0 button (`M5.BtnA`). The keyboard is a TCA8418
+  at 0x34 on the internal I2C (`m5::In_I2C`, G8/G9), a 7x8 matrix. `Input`
+  sets it up the way M5Stack's M5Cardputer library does and polls its event
+  queue every tick (register 0x03 holds the count, 0x04 the events, bit 7
+  set on a press); `CardputerKeys` remaps the events onto the printed 4x14
+  layout, as that library does. The library itself is not used: it pulls in
+  IRremote, which MARS does not need. On other boards the keyboard is never
+  touched.
+- Its USB connection dropped several times while it was handled (the port
+  vanishes, `Device not configured`); the firmware did not reset (the seed
+  stayed the same). Unplug and replug, and keep the cable still.
+- Flashing works through the usual auto-reset, no button needed.
+
+The original Cardputer (no IMU, a GPIO key matrix on G8/G9/G11 and
+G13/G15/G3-G7) is not supported: its keyboard would need the matrix scan,
+and there was no device to test on. The StickC Plus / Plus2 are classic
+ESP32 and need a separate build; the 144 KB static terrain probably does not
+fit their static DRAM as it is.
 
 ### The side button is handled by the PMIC, not the firmware
 

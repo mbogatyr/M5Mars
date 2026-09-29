@@ -4,6 +4,7 @@
 
 #include "DisplayTimeout.h"
 #include "Flight.h"
+#include "Input.h"
 #include "Renderer.h"
 #include "Terrain.h"
 #include "Tilt.h"
@@ -26,6 +27,7 @@ Terrain terrain;
 Renderer renderer;
 Flight flight;
 Tilt tilt;
+Input input;
 DisplayTimeout displayTimeout;
 
 bool displayAwake = true;
@@ -45,6 +47,27 @@ uint64_t perfPaintUs = 0;
 uint64_t perfPushUs = 0;
 bool accelOn = false;
 uint32_t accelSinceMs = 0;
+
+// The accelerometer in the axes Tilt expects (see Tilt.h): X across the short
+// side, Y along the long side, Z out of the screen. M5Unified already reports
+// the StickS3 that way. In the Cardputer ADV the IMU sits turned by 90 degrees
+// (checked on the board on 2026-09-29: tipping it towards you moved its Y,
+// lowering one end its X).
+bool readAccel(float &x, float &y, float &z) {
+    float ax, ay, az;
+    if (!M5.Imu.getAccel(&ax, &ay, &az)) {
+        return false;
+    }
+    if (M5.getBoard() == m5::board_t::board_M5CardputerADV) {
+        x = ay;
+        y = -ax;
+    } else {
+        x = ax;
+        y = ay;
+    }
+    z = az;
+    return true;
+}
 
 void showCaption(const char *text, uint32_t now) {
     caption = text;
@@ -81,8 +104,9 @@ void setDisplayAwake(bool awake, uint32_t now) {
 
 void printStatus() {
     const Camera &c = flight.camera();
-    Serial.printf("ST seed=%08lx speed=%s x=%.1f y=%.1f heading=%.2f alt=%.1f ground=%.1f "
-                  "heap=%u internal=%u\n",
+    Serial.printf("ST board=%d keyboard=%d seed=%08lx speed=%s x=%.1f y=%.1f heading=%.2f "
+                  "alt=%.1f ground=%.1f heap=%u internal=%u\n",
+                  static_cast<int>(M5.getBoard()), input.hasKeyboard() ? 1 : 0,
                   static_cast<unsigned long>(terrain.seed()), kSpeedNames[flight.speedLevel()], c.x,
                   c.y, c.heading, c.altitude, terrain.groundAt(c.x, c.y),
                   static_cast<unsigned>(ESP.getFreeHeap()),
@@ -92,7 +116,7 @@ void printStatus() {
 // Line commands: s (screenshot), k1 / k2 (press KEY1 / KEY2), perf (a
 // performance line every second), acc (accelerometer lines at 10 Hz),
 // st (status).
-void readSerial(bool &key1, bool &key2, uint32_t now) {
+void readSerial(uint32_t now) {
     while (Serial.available() > 0) {
         const char ch = static_cast<char>(Serial.read());
         if (ch != '\n' && ch != '\r') {
@@ -104,9 +128,9 @@ void readSerial(bool &key1, bool &key2, uint32_t now) {
         if (command == "s") {
             renderer.writeSnapshot(Serial);
         } else if (command == "k1") {
-            key1 = true;
+            input.pressNewPlanet();
         } else if (command == "k2") {
-            key2 = true;
+            input.pressNextSpeed();
         } else if (command == "perf") {
             perfOn = !perfOn;
             perfSinceMs = now;
@@ -140,8 +164,9 @@ void report(uint32_t now, float ax, float ay, float az) {
         perfPaintUs = perfPushUs = 0;
     }
     if (accelOn && now - accelSinceMs >= 100 && serialHasRoom()) {
-        Serial.printf("ACC %.3f %.3f %.3f turn=%.2f climb=%.2f\n", ax, ay, az, tilt.turn(),
-                      tilt.climb());
+        const Controls keys = input.keys();
+        Serial.printf("ACC %.3f %.3f %.3f turn=%.2f climb=%.2f keys=%.0f,%.0f\n", ax, ay, az,
+                      tilt.turn(), tilt.climb(), keys.turn, keys.climb);
         accelSinceMs = now;
     }
 }
@@ -156,6 +181,7 @@ void setup() {
 
     M5.Display.setBrightness(kBrightness);
     renderer.begin();
+    input.begin();
 
     const uint32_t now = millis();
     newPlanet(now);
@@ -171,16 +197,15 @@ void loop() {
 
     // Powering off is not handled here: the side button does it by
     // itself on a double press, via the PMIC.
-    bool key1 = M5.BtnA.wasPressed();
-    bool key2 = M5.BtnB.wasPressed();
-    readSerial(key1, key2, now);
+    input.update();
+    readSerial(now);
 
     float ax = 0, ay = 0, az = 0;
-    const bool haveAccel = M5.Imu.getAccel(&ax, &ay, &az);
+    const bool haveAccel = readAccel(ax, ay, az);
     const bool tilted = haveAccel && tilt.moved(ax, ay, az);
 
     const bool wasAwake = displayAwake;
-    const bool activity = M5.BtnA.isPressed() || M5.BtnB.isPressed() || key1 || key2 || tilted;
+    const bool activity = input.held() || input.newPlanet() || input.nextSpeed() || tilted;
     setDisplayAwake(displayTimeout.shouldBeOn(now, activity), now);
 
     if (!displayAwake) {
@@ -189,17 +214,17 @@ void loop() {
     }
 
     // A press that wakes the display only wakes it.
-    if (wasAwake && key1) {
+    if (wasAwake && input.newPlanet()) {
         newPlanet(now);
         scheduleRecenter(now);
         showCaption("NEW PLANET", now);
     }
-    if (wasAwake && key2) {
+    if (wasAwake && input.nextSpeed()) {
         flight.nextSpeed();
         showCaption(kSpeedNames[flight.speedLevel()], now);
     }
 
-    Controls controls;
+    Controls controls = input.keys();
     if (haveAccel) {
         if (recenterPending && static_cast<int32_t>(now - recenterAtMs) >= 0) {
             tilt.recenter(ax, ay, az);
@@ -207,8 +232,10 @@ void loop() {
         }
         tilt.update(ax, ay, az);
         if (!recenterPending) {
-            controls.turn = tilt.turn();
-            controls.climb = tilt.climb();
+            Controls fromTilt;
+            fromTilt.turn = tilt.turn();
+            fromTilt.climb = tilt.climb();
+            controls = combine(fromTilt, controls);
         }
     }
     flight.update(now, controls, terrain);

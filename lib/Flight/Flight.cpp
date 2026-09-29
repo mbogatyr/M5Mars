@@ -61,6 +61,13 @@ float wrapAngle(float a) {
 
 } // namespace
 
+Controls combine(const Controls &a, const Controls &b) {
+    Controls sum;
+    sum.turn = clampTo(a.turn + b.turn, 1.0f);
+    sum.climb = clampTo(a.climb + b.climb, 1.0f);
+    return sum;
+}
+
 float Flight::speed() const { return kSpeeds[speedLevel_]; }
 
 void Flight::nextSpeed() { speedLevel_ = (speedLevel_ + 1) % kSpeedLevels; }
